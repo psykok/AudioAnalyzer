@@ -87,6 +87,7 @@ class myGui(fMain):
 
 
         self.gpib_dev = None
+        self.demo_mode = False
 
         self.plt=[]
         self.nbLines=1
@@ -141,16 +142,38 @@ class myGui(fMain):
 
     def GetGPIBDevices(self):
         GPIBDevList = []
-        rm = pyvisa.ResourceManager()
-        devices = rm.list_resources()
-        
+        try:
+            rm = pyvisa.ResourceManager()
+            devices = rm.list_resources()
+        except Exception as e:
+            print("VISA resource manager error:", e)
+            devices = []
+
         for g_dev in devices:
             if "GPIB" in g_dev:
-               GPIBDevList.append(g_dev)
+                GPIBDevList.append(g_dev)
         if len(GPIBDevList):
             self.comboGPIBAddr.Clear()
             self.comboGPIBAddr.Set(GPIBDevList)
             self.comboGPIBAddr.SetSelection(0)
+            # ensure demo mode is off when a device is present
+            try:
+                self.checkDemo.SetValue(False)
+            except Exception:
+                pass
+        else:
+            # No GPIB devices found -> start in demo mode
+            print("No GPIB devices found: starting in demo mode")
+            self.demo_mode = True
+            try:
+                self.checkDemo.SetValue(True)
+            except Exception:
+                pass
+            # ensure GUI panels reflect demo mode
+            try:
+                self.OnDemo(None)
+            except Exception:
+                pass
         return
 
     def getPanelConfigValue(self,meas,index):
@@ -459,6 +482,7 @@ class VISA_GPIB():
 
         print("Connecting to: %s" % self.mydevice)
 
+        
         self.rm = pyvisa.ResourceManager()
         self.inst = self.rm.open_resource(self.mydevice)
 
